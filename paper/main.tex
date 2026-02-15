@@ -137,7 +137,7 @@ Role & Identity & Responsibility \\
 \midrule
 Worker ($W$) & Agent ID & Executes tool and produces outputs \\
 Verifier ($V$) & Agent ID & Independently validates outputs \\
-Invoker ($I$) & Principal & Consumes result; may attest semantics \\
+Invoker ($I$) & Principal & Consumes result; may attest semantics (post-hoc via \texttt{attest\_task\_result}; feeds trust graph, not immediate acceptance) \\
 \bottomrule
 \end{tabular}
 \caption{Roles in verified multi-agent execution.}
@@ -168,7 +168,7 @@ Given a request to invoke tool $T$ on worker $W$ with args $x$:
 \State $d_x \gets H(x)$; $d_y \gets H(y)$
 \State $\Vset \gets \CP.\textsf{SelectVerifiers}(k, \Pi, \text{exclude}=W)$
 \ForAll{$V \in \Vset$}
-  \State $(v, c, m) \gets \CP.\textsf{Invoke}(V, \textsf{verify\_result}, \langle \mathrm{taskId}, W, T, d_x, d_y \rangle)$
+  \State $(v, c, m) \gets \CP.\textsf{Invoke}(V, \textsf{verify\_result}, \langle \mathrm{taskId}, W, T, d_x, d_y \rangle)$ \Comment{$d_x=H(x)$, $d_y=H(y)$; verifier returns $\{\mathrm{verdict}, \mathrm{confidence}, \mathrm{mode}\}$}
   \State \CP.\textsf{AppendVerificationReceipt}$(V,W,T,d_x,d_y,v,c,m)$
 \EndFor
 \State \CP.\textsf{AppendExecutionReceipt}$(W,T,d_x,d_y)$
@@ -194,6 +194,7 @@ For attestor $A$ attesting \Pass to worker $W$, define:
 \begin{equation}
 t(A,W)=\lambda_{\mathrm{role}}\cdot \mathrm{conf}(A,W)\cdot s(\mathrm{mode})\cdot g(\mathrm{agree})\cdot \delta(\Delta t).
 \end{equation}
+Implementation: $\lambda_{\mathrm{verifier}}=1$, $\lambda_{\mathrm{invoker}}=0.5$; $s(\mathrm{REPLAY})=1$, $s(\mathrm{CROSSCHECK})=0.8$, $s(\mathrm{HEURISTIC})=0.6$; $g$ boosts when multiple attestors concur on the same task (capped 1.2); $\delta=\exp(-\ln 2\cdot\Delta t/\mathit{halfLife})$ with half-life 90 days.
 
 \subsection{Normalized Matrix $\Cmat$}
 \label{sec:C}
@@ -272,6 +273,7 @@ Let $\Aset$ be PASS attestors for a task, and $R_A$ their reputations.
 \begin{equation}
 \textsf{accepted} \iff \left(\sum_{A\in \Aset} R_A \ge \tauT\right)\land \left(|\Aset|\ge 1\right).
 \end{equation}
+$\Aset$ is the set of \emph{verifier} attestors that returned \Pass for the task (invoker attestation is asynchronous and does not affect immediate acceptance). Unknown attestors receive baseline rank 0.2. Default $\tauT=0.5$, $\alphaD=0.85$.
 \end{definition}
 
 \section{Security and Adversarial Considerations}
@@ -295,7 +297,7 @@ Attack / mitigation / residual risk.
 Centralized control plane; decentralized receipt sets; enterprise tool invocation; payment-gated execution.
 
 \section{Implementation Notes}
-Discovery; policy; invocation; receipts; ranking cadence; diversity heuristics.
+The attest-substrate control plane implements ExecutionRank: discovery via ERC-8004 subgraph (search\_agents, list\_tools); policy filters (MIN\_REPUTATION, ALLOW\_RISK\_CLASS); invoke always runs worker + verifiers; receipts stored in SQLite; ranking refreshed periodically (default 60s). Verifier selection: allowlist (capped at 10 agents) or search-based; worker excluded. Verifier tool: \texttt{verify\_result} (fallback \texttt{validate}); input \texttt{\{taskId, workerAgentId, workerTool, workerArgsHash, workerOutputHash\}}; output \texttt{\{verdict, confidence, mode\}}. Digests: SHA-256 of canonical JSON.
 
 \section{Evaluation Plan}
 Fault injection; lazy verifiers; collusion simulation; latency/cost vs assurance; convergence under sparsity.
@@ -338,15 +340,19 @@ $\tauT$ & Acceptance threshold \\
 {
   "receipt_id": "uuid",
   "task_id": "uuid",
-  "worker_agent_id": "agent:12345",
-  "tool": "coinbase_price",
-  "principal": "principal:anonymous",
-  "args_digest": "hex...",
-  "result_digest": "hex...",
-  "outcome": "ok"
+  "principal": "anonymous",
+  "agent_id": 12345,
+  "tool_name": "coinbase_price",
+  "tool_id": "12345::coinbase_price",
+  "args_digest": "sha256-hex...",
+  "result_digest": "sha256-hex...",
+  "outcome": "ok",
+  "started_at": "ISO8601",
+  "ended_at": "ISO8601",
+  "latency_ms": 42
 }
 \end{lstlisting}
-\caption{Execution Receipt (Example)}
+\caption{Execution Receipt (attest-substrate schema). Digests are SHA-256 of canonical JSON.}
 \end{figure*}
 
 \bibliographystyle{plain}
