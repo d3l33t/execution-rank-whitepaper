@@ -1,0 +1,11 @@
+cff-version: 1.2.0
+message: "If you use this work, please cite it as below."
+title: "ExecutionRank: Verified Multi-Agent Execution via Weighted Attestation and Threshold Acceptance"
+type: report
+authors:
+  - family-names: "Ambroselli"
+    given-names: "Nikko"
+date-released: "2026-02-14"
+license: "CC-BY-4.0"
+repository-code: "https://github.com/<your-username>/executionrank-whitepaper"
+abstract: "ExecutionRank is a trust layer for autonomous agent systems that combines verified multi-agent execution, a weighted attestation graph, and deterministic threshold acceptance for policy-gated tool invocation."
