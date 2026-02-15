@@ -1,28 +1,41 @@
+% main.tex — two-column arXiv-style template for ExecutionRank
+% Compile: pdflatex main.tex  (or latexmk -pdf)
+% Notes:
+% - Use algorithm* / table* for full-width floats in two-column mode.
+% - Avoid minted; arXiv is happiest with standard packages.
+
 \documentclass[10pt,twocolumn]{article}
 
+% ---------- Basic Setup ----------
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage{lmodern}
 \usepackage{microtype}
+
+% Page geometry / column separation (tweak to taste)
 \usepackage[margin=0.75in]{geometry}
 \setlength{\columnsep}{0.25in}
 
+% ---------- Math ----------
 \usepackage{amsmath, amssymb, amsthm}
 \usepackage{mathtools}
 
+% ---------- Tables / Lists ----------
 \usepackage{booktabs}
 \usepackage{array}
 \usepackage{enumitem}
 
+% ---------- Figures / Links ----------
 \usepackage{graphicx}
 \usepackage{hyperref}
+\usepackage{bookmark}
 \usepackage{url}
 
+% ---------- Algorithms (two-column friendly) ----------
 \usepackage{algorithm}
 \usepackage{algpseudocode}
 
-\usepackage[numbers,sort&compress]{natbib}
-
+% ---------- Code Listings (JSON schemas) ----------
 \usepackage{listings}
 \usepackage{xcolor}
 \lstset{
@@ -33,19 +46,17 @@
   keepspaces=true
 }
 
-\usepackage{titlesec}
-\titlespacing*{\section}{0pt}{1.0ex plus 0.2ex minus 0.2ex}{0.6ex}
-\titlespacing*{\subsection}{0pt}{0.9ex plus 0.2ex minus 0.2ex}{0.4ex}
-\titlespacing*{\subsubsection}{0pt}{0.7ex plus 0.2ex minus 0.2ex}{0.2ex}
-
+% ---------- Theorem Environments ----------
 \newtheorem{definition}{Definition}
+\newtheorem{proposition}{Proposition}
 
-\newcommand{\CP}{\mathrm{CP}}
-\newcommand{\Host}{\mathrm{H}}
-\newcommand{\RS}{\mathrm{RS}}
-\newcommand{\Aset}{\mathcal{A}}
-\newcommand{\Wset}{\mathcal{W}}
-\newcommand{\Vset}{\mathcal{V}}
+% ---------- Notation / Macros ----------
+\newcommand{\CP}{\ensuremath{\mathrm{CP}}}          % control plane
+\newcommand{\Host}{\ensuremath{\mathrm{H}}}         % host
+\newcommand{\RS}{\ensuremath{\mathrm{RS}}}          % receipt store
+\newcommand{\Aset}{\mathcal{A}}        % set of attestors
+\newcommand{\Wset}{\mathcal{W}}        % set of workers
+\newcommand{\Vset}{\mathcal{V}}        % set of verifiers
 \newcommand{\Pass}{\textsf{PASS}}
 \newcommand{\Fail}{\textsf{FAIL}}
 \newcommand{\Incon}{\textsf{INCONCLUSIVE}}
@@ -53,102 +64,100 @@
 \newcommand{\Cross}{\textsf{CROSSCHECK}}
 \newcommand{\Heur}{\textsf{HEURISTIC}}
 
-\newcommand{\Rvec}{\mathbf{R}}
-\newcommand{\pvec}{\mathbf{p}}
-\newcommand{\Cmat}{\mathbf{C}}
-\newcommand{\Mmat}{\mathbf{M}}
+\newcommand{\Rvec}{\mathbf{R}}         % reputation vector
+\newcommand{\pvec}{\mathbf{p}}         % seed vector
+\newcommand{\Cmat}{\mathbf{C}}         % attestor->worker matrix
+\newcommand{\Mmat}{\mathbf{M}}         % attestor->attestor flow matrix
 
-\newcommand{\alphaD}{\alpha}
-\newcommand{\tauT}{\tau}
+\newcommand{\alphaD}{\alpha}           % damping factor
+\newcommand{\tauT}{\tau}               % acceptance threshold
 
+% ---------- Title / Author ----------
 \title{\bfseries ExecutionRank: Verified Multi-Agent Execution via Weighted Attestation and Threshold Acceptance}
-\author{Nikko Ambroselli}
+\author{
+  Nikko Ambroselli\\
+  \texttt{daybed-wile-0e@icloud.com}
+}
 \date{February 14, 2026}
 
 \begin{document}
 
+% ---------- Full-width title + abstract block ----------
 \twocolumn[
 \begin{@twocolumnfalse}
-\maketitle
+  \maketitle
 
-\begin{abstract}
-Autonomous agent systems increasingly delegate tool invocation to remote agents discovered through registries.
-While this enables scale and specialization, it introduces a missing primitive: \emph{verifiable execution trust}.
-Most systems accept a tool's return value as evidence of correctness or rely on an LLM to judge outputs, neither of which
-constitutes independent verification. We present \emph{ExecutionRank}, a trust layer for autonomous tool invocation that combines
-(i) verified multi-agent execution (worker + independent verifiers), (ii) a weighted attestation graph built from auditable positive attestations,
-and (iii) deterministic threshold acceptance to gate consumption of results (and optionally, authorization of side effects).
-ExecutionRank yields a policy-tunable assurance signal for tool calls under uncertainty.
-\end{abstract}
+  \begin{abstract}
+  Autonomous agent systems increasingly delegate tool invocation to remote agents discovered through registries.
+  While this enables scale and specialization, it introduces a missing primitive: \emph{verifiable execution trust}.
+  Most systems accept a tool's return value as evidence of correctness or rely on an LLM to judge outputs, neither of which
+  constitutes independent verification. We present \emph{ExecutionRank}, a trust layer for autonomous tool invocation that combines
+  (i) verified multi-agent execution (worker + independent verifiers), (ii) a weighted attestation graph built from auditable positive attestations,
+  and (iii) deterministic threshold acceptance to gate consumption of results (and optionally, authorization of side effects).
+  ExecutionRank yields a policy-tunable assurance signal for tool calls under uncertainty.
+  \end{abstract}
 
-\vspace{0.75em}
-\noindent\textbf{Keywords:} autonomous agents; tool invocation; verification; attestation; reputation; EigenTrust; risk gating; audit receipts.
-\vspace{1.0em}
+  \vspace{0.75em}
+  \noindent\textbf{Keywords:} autonomous agents; tool invocation; verification; attestation; reputation; EigenTrust; risk gating; audit receipts.
+  \vspace{1.0em}
 \end{@twocolumnfalse}
 ]
 
-\section{Problem Context}
-Autonomous agent systems increasingly delegate tool invocation to remote agents discovered via registries (e.g., ERC-8004).
-A host (\Host, e.g., LLM, orchestrator, or user client) selects an agent, invokes a tool, and consumes the result.
-This model lacks verifiable execution trust.
+% ---------- Body ----------
+\section{Introduction and Problem Context}
+Autonomous agent ecosystems delegate tool invocation to remote agents discovered via registries (e.g., ERC-8004).
+A host (\Host) selects an agent, invokes a tool, and consumes the result. This model lacks verifiable execution trust.
 
 \paragraph{Unverified execution.}
-Current systems treat successful tool return as sufficient evidence of correctness.
-There is no independent attestation that the output matches the intended computation.
-A malicious or faulty worker can return arbitrary data; the host has no mechanism to distinguish valid from invalid results short of re-executing the task itself.
+Most systems treat “tool returned successfully” as evidence of correctness. A faulty or malicious worker can return arbitrary data.
 
 \paragraph{LLM-as-judge insufficiency.}
-Using the invoking LLM to judge its own tool outputs creates a single point of trust.
-The LLM has no access to ground truth; it can only perform semantic plausibility checks.
-Such checks are subjective, non-reproducible, and vulnerable to prompt injection or model bias.
-They do not constitute independent verification.
+Semantic plausibility checks are subjective and vulnerable to prompt injection and distribution shift.
 
 \paragraph{Absence of independent attestation.}
-In traditional distributed systems, Byzantine fault tolerance relies on multiple independent replicas or witnesses.
-Agent tool invocation typically has no such witnesses: the worker runs once, and the result is accepted or rejected by the invoker alone.
+Traditional distributed systems introduce independent witnesses (replication, quorum, BFT~\cite{castro1999pbft,lamport1982byzantine}). Agent tool invocation typically lacks such witnesses.
 
 \paragraph{Risk of unverified invocation.}
-Tools may have side effects (payments, state changes, external API calls).
-Accepting unverified results exposes systems to incorrect state, financial loss, and cascading failures.
-Policy gates reduce which agents may be invoked but do not verify that a specific invocation produced a correct result.
+Tools may have side effects (payments, state mutation, external API calls). Accepting unverified results risks incorrect state and financial loss.
 
-ExecutionRank introduces a control plane that (1) runs a worker and multiple independent verifiers,
-(2) builds a weighted attestation graph from \Pass attestations, and (3) gates acceptance on a reputation-weighted threshold.
+\paragraph{Contributions.}
+ExecutionRank introduces (1) a verified execution protocol, (2) a weighted attestation graph, and (3) deterministic threshold acceptance.
 
-\section{Verified Multi-Agent Execution}
-Execution is structured around three roles:
+\section{System Model}
+\subsection{Entities and Roles}
+We consider a host \Host, a control plane \CP, agents exposing tools, and a receipt store \RS.
 
-\begin{table}[h]
+\begin{table}[ht]
 \centering
+\footnotesize
+\setlength{\tabcolsep}{3.5pt}
 \begin{tabular}{@{}lll@{}}
 \toprule
 Role & Identity & Responsibility \\
 \midrule
-Worker ($W$) & Agent ID & Executes the tool and produces outputs \\
+Worker ($W$) & Agent ID & Executes tool and produces outputs \\
 Verifier ($V$) & Agent ID & Independently validates outputs \\
-Invoker ($I$) & Principal & Consumes result; may attest semantic correctness \\
+Invoker ($I$) & Principal & Consumes result; may attest semantics \\
 \bottomrule
 \end{tabular}
-\caption{Roles in verified execution.}
+\caption{Roles in verified multi-agent execution.}
 \label{tab:roles}
 \end{table}
 
-\paragraph{Flow.}
-The control plane runs the worker, selects $k$ verifiers (excluding the worker),
-and invokes each verifier's \texttt{verify\_result} tool with
-$\{ \mathrm{taskId}, \mathrm{workerAgentId}, \mathrm{workerTool}, \mathrm{argsHash}, \mathrm{outputHash} \}$.
-Verifiers return $\{ \mathrm{verdict}, \mathrm{confidence}, \mathrm{mode} \}$.
-All attestations are stored as verification receipts with role and verdict.
+\subsection{Assumptions and Threat Model (Outline)}
+We assume \RS is append-only (or tamper-evident) and that verifiers can be sampled from a pool not fully controlled by a single worker.
+We consider adversaries controlling subsets of workers, verifiers, or invokers (Section~\ref{sec:security}).
 
-\paragraph{Verification modes (ordered by strength).}
-\begin{itemize}[leftmargin=*]
-  \item \Replay: re-execute the tool and compare outputs (strongest).
-  \item \Cross: use alternative logic to validate correctness.
-  \item \Heur: rule-based or approximate checks.
-\end{itemize}
+\section{Protocol Overview}
+\subsection{Verified Multi-Agent Execution}
+Given a request to invoke tool $T$ on worker $W$ with args $x$:
+(i) \CP invokes $T$ on $W$ to obtain $y$,
+(ii) computes digests $d_x \gets H(x)$ and $d_y \gets H(y)$,
+(iii) samples $k$ verifiers $V_1..V_k$ with $V_i \neq W$,
+(iv) collects verification receipts $\langle \mathrm{verdict}, \mathrm{confidence}, \mathrm{mode} \rangle$,
+(v) stores receipts, and (vi) decides acceptance (Section~\ref{sec:accept}).
 
-Only \Pass attestations contribute to the trust graph. \Fail and \Incon are recorded for audit but do not create edges.
-
+% Use algorithm* to span both columns for readability
 \begin{algorithm*}[t]
 \caption{VerifiedExecution (Control Plane)}
 \label{alg:verified-exec}
@@ -167,52 +176,180 @@ Only \Pass attestations contribute to the trust graph. \Fail and \Incon are reco
 \end{algorithmic}
 \end{algorithm*}
 
+\section{Verification Modes}
+Modes are ordered by strength:
+\begin{itemize}[leftmargin=*]
+  \item \Replay: re-execute and compare outputs (or validate invariants for non-deterministic tools).
+  \item \Cross: validate via alternate logic or independent sources.
+  \item \Heur: rule-based or approximate checks.
+\end{itemize}
+
 \section{Weighted Attestation Graph}
-\subsection{Graph Structure and Design Rationale}
-The trust graph is bipartite: vertices are partitioned into attestors (verifiers + invokers) and workers.
-Edges are directed attestor$\rightarrow$worker. Only \Pass attestations create edges.
+\subsection{Graph Structure and Rationale}
+We construct a bipartite graph with edges from attestors to workers; only \Pass attestations create edges.
+Worker$\rightarrow$worker edges are disallowed to prevent mutual inflation loops.
 
 \subsection{Edge Weight}
-For an attestor $A$ attesting \Pass to worker $W$, define:
+For attestor $A$ attesting \Pass to worker $W$, define:
 \begin{equation}
-t(A,W) = \lambda_{\mathrm{role}} \cdot \mathrm{confidence} \cdot \mathrm{verificationStrength} \cdot \mathrm{agreementFactor} \cdot \mathrm{timeDecay}.
+t(A,W)=\lambda_{\mathrm{role}}\cdot \mathrm{conf}(A,W)\cdot s(\mathrm{mode})\cdot g(\mathrm{agree})\cdot \delta(\Delta t).
 \end{equation}
 
-\subsection{Normalized Matrix $C$}
-Rows = attestors, columns = workers:
+\subsection{Normalized Matrix $\Cmat$}
+\label{sec:C}
 \begin{equation}
-\Cmat_{A,W} = \frac{\max(t(A,W), 0)}{\sum_{W'} \max(t(A,W'), 0)}.
-\label{eq:C}
+\Cmat_{A,W}=\frac{\max(t(A,W),0)}{\sum_{W'}\max(t(A,W'),0)}.
 \end{equation}
 
-\subsection{Attestor--Attestor Flow Matrix $M$}
-Let $\mathcal{A}$ be attestors ($|\mathcal{A}|=n$), $\mathcal{W}$ workers ($|\mathcal{W}|=m$), and $\Cmat\in\mathbb{R}^{n\times m}$ row-stochastic.
-Define $s_w = \sum_{a\in\mathcal{A}} \Cmat_{a,w}$.
-Define $Q_{w,b}=\Cmat_{b,w}/s_w$ if $s_w>0$ else $1/n$. Then $\Mmat=\Cmat Q=\Cmat D^{-1}\Cmat^\top$.
+\subsubsection{Attestor--Attestor Flow Matrix $M$ (Derived from $C$)}
+Let $\mathcal{A}$ be the set of attestors ($|\mathcal{A}|=n$) and $\mathcal{W}$ the set of workers ($|\mathcal{W}|=m$).
+Let $C \in \mathbb{R}^{n \times m}$ be the row-stochastic attestor$\to$worker matrix defined in Section~\ref{sec:C}.
 
-\subsection{EigenTrust-Style Ranking}
+Define the worker column-sums:
+\[
+s_w \;=\; \sum_{a \in \mathcal{A}} C_{a,w} \quad \forall w \in \mathcal{W}.
+\]
+
+Define a worker$\to$attestor redistribution matrix $Q \in \mathbb{R}^{m \times n}$:
+\[
+Q_{w,b} \;=\;
+\begin{cases}
+\frac{C_{b,w}}{s_w}, & s_w > 0,\\[6pt]
+\frac{1}{n}, & s_w = 0,
+\end{cases}
+\quad \forall w \in \mathcal{W},\; b \in \mathcal{A}.
+\]
+
+Then the induced attestor$\to$attestor flow matrix is:
+\begin{align*}
+M &= C Q \\
+&= C D^{-1} C^\top.
+\end{align*}
+where $D=\mathrm{diag}(s_1,\dots,s_m)$ (and $D^{-1}$ is interpreted with the $s_w=0$ convention above).
+
+Equivalently, entrywise:
+\begin{multline*}
+M_{a,b} = \sum_{w \in \mathcal{W}} C_{a,w}\,\frac{C_{b,w}}{\sum_{a' \in \mathcal{A}} C_{a',w}}\\
+\text{(with $0/0$ handled by the $s_w=0$ case).}
+\end{multline*}
+
+\paragraph{Row-stochasticity.}
+If $C$ is row-stochastic and $Q$ is defined as above, then $M$ is row-stochastic: $\sum_{b} M_{a,b} = 1$ for all $a$.
+
+
+\subsection{Reputation via EigenTrust-Style Iteration}
+\label{sec:eigentrust}
+Following the EigenTrust approach~\cite{kamvar2003eigentrust}:
 \begin{equation}
-\Rvec = (1-\alphaD)\pvec + \alphaD \Mmat \Rvec.
+\Rvec=(1-\alphaD)\pvec+\alphaD\,\Mmat\,\Rvec.
 \end{equation}
+
+\begin{algorithm*}[t]
+\caption{ComputeAttestorReputation}
+\label{alg:reputation}
+\begin{algorithmic}[1]
+\Require PASS receipts, damping $\alphaD$, seed $\pvec$, tolerance $\varepsilon$, maxIters
+\Ensure Attestor reputation vector $\Rvec$
+\State Build $t(A,W)$ from PASS receipts
+\State Normalize rows to form $\Cmat$
+\State Derive $\Mmat$ from $\Cmat$ (attestor agreement flow through shared workers)
+\State $\Rvec \gets \pvec$
+\For{$i=1$ to maxIters}
+  \State $\Rvec_{\text{next}}\gets (1-\alphaD)\pvec+\alphaD(\Mmat \Rvec)$
+  \If{$\lVert \Rvec_{\text{next}}-\Rvec \rVert_1<\varepsilon$} \textbf{break} \EndIf
+  \State $\Rvec\gets \Rvec_{\text{next}}$
+\EndFor
+\State Normalize $\Rvec$ (e.g., $\max(\Rvec)=1$)
+\State \Return $\Rvec$
+\end{algorithmic}
+\end{algorithm*}
 
 \section{Acceptance Threshold Logic}
-\begin{definition}[Acceptance predicate]
+\label{sec:accept}
+Let $\Aset$ be PASS attestors for a task, and $R_A$ their reputations.
+
+\begin{definition}[Acceptance Predicate]
 \begin{equation}
-\textsf{accepted} \iff \left( \sum_{A \in \mathcal{A}} R_A \ge \tauT \right) \land \left( |\mathcal{A}| \ge 1 \right).
+\textsf{accepted} \iff \left(\sum_{A\in \Aset} R_A \ge \tauT\right)\land \left(|\Aset|\ge 1\right).
 \end{equation}
 \end{definition}
 
 \section{Security and Adversarial Considerations}
-\section{Deployment and Integration Model}
+\label{sec:security}
+\subsection{Sybil Attacks}
+Sybil attacks~\cite{douceur2002sybil} allow a single entity to control multiple identities. Attack / mitigation / residual risk.
+
+\subsection{Collusion Rings}
+Attack / mitigation / residual risk.
+
+\subsection{Low-Risk Farming}
+Attack / mitigation / residual risk.
+
+\subsection{Invoker-Only Inflation}
+Attack / mitigation / residual risk.
+
+\subsection{Receipt Integrity and Omission}
+Attack / mitigation / residual risk.
+
+\section{Deployment and Integration Models}
+Centralized control plane; decentralized receipt sets; enterprise tool invocation; payment-gated execution.
+
+\section{Implementation Notes}
+Discovery; policy; invocation; receipts; ranking cadence; diversity heuristics.
+
+\section{Evaluation Plan}
+Fault injection; lazy verifiers; collusion simulation; latency/cost vs assurance; convergence under sparsity.
+
+\section{Limitations and Future Work}
+Negative evidence; risk-class reputation; verifier diversity guarantees; receipt consensus; privacy; incentives.
 
 \appendix
-\section{Illustrative Receipt Schemas}
-\subsection{Execution Receipt}
-\begin{lstlisting}[language=json]
-{"receipt_id":"uuid","task_id":"uuid","worker_agent_id":"agent:12345"}
-\end{lstlisting}
 
-\bibliographystyle{unsrtnat}
+\section{Notation}
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{@{}ll@{}}
+\toprule
+Symbol & Meaning \\
+\midrule
+$\Host$ & Host \\
+$\CP$ & Control plane \\
+$\RS$ & Receipt store \\
+$W$ & Worker agent \\
+$V$ & Verifier agent \\
+$A$ & Attestor \\
+$\Cmat$ & Attestor$\rightarrow$worker matrix \\
+$\Mmat$ & Attestor$\rightarrow$attestor flow matrix \\
+$\Rvec$ & Attestor reputation vector \\
+$\pvec$ & Seed distribution \\
+$\alphaD$ & Damping \\
+$\tauT$ & Acceptance threshold \\
+\bottomrule
+\end{tabular}
+\caption{Notation summary.}
+\label{tab:notation}
+\end{table}
+
+\section{Illustrative Receipt Schemas}
+\subsection{Execution Receipt (Example)}
+\begin{figure*}[t]
+\begin{lstlisting}
+{
+  "receipt_id": "uuid",
+  "task_id": "uuid",
+  "worker_agent_id": "agent:12345",
+  "tool": "coinbase_price",
+  "principal": "principal:anonymous",
+  "args_digest": "hex...",
+  "result_digest": "hex...",
+  "outcome": "ok"
+}
+\end{lstlisting}
+\caption{Execution Receipt (Example)}
+\end{figure*}
+
+\bibliographystyle{plain}
 \bibliography{references}
 
 \end{document}
