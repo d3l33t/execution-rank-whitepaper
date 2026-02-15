@@ -70,6 +70,8 @@
 \newcommand{\Mmat}{\mathbf{M}}         % attestor->attestor flow matrix
 
 \newcommand{\alphaD}{\alpha}           % damping factor
+\newcommand{\betaD}{\beta}             % seed mixing (uniform vs seeded)
+\newcommand{\rzer}{r_0}                % baseline rank from pvec
 \newcommand{\tauT}{\tau}               % acceptance threshold
 
 % ---------- Title / Author ----------
@@ -238,12 +240,21 @@ M_{a,b} = \sum_{w \in \mathcal{W}} C_{a,w}\,\frac{C_{b,w}}{\sum_{a' \in \mathcal
 If $C$ is row-stochastic and $Q$ is defined as above, then $M$ is row-stochastic: $\sum_{b} M_{a,b} = 1$ for all $a$.
 
 
+\subsection{Seed Vector $\pvec$ and Baseline Rank}
+\label{sec:seed}
+The seed (teleport) vector $\pvec$ determines the reputation mass each attestor receives when not following the attestation graph. To ensure every attestor---including those with no attestation history---receives a well-defined baseline, we define
+\begin{equation}
+\pvec = (1-\betaD)\,\mathbf{u} + \betaD\,\mathbf{s},
+\end{equation}
+where $\mathbf{u}$ is the uniform distribution over $\Aset$ (all attestors who have appeared in any receipt), $\mathbf{s}$ is a seeded distribution (e.g., prior trust or domain-specific weights), and $\betaD \in [0,1]$. The uniform component guarantees $\min_{a \in \Aset} p_a \ge (1-\betaD)/|\Aset|$; we denote this baseline $\rzer$. Choosing $\betaD$ (e.g., $\betaD=0.8$) yields a tunable $\rzer$; default $\rzer \approx 0.2$ for small $|\Aset|$.
+
 \subsection{Reputation via EigenTrust-Style Iteration}
 \label{sec:eigentrust}
 Following the EigenTrust approach~\cite{kamvar2003eigentrust}:
 \begin{equation}
 \Rvec=(1-\alphaD)\pvec+\alphaD\,\Mmat\,\Rvec.
 \end{equation}
+Attestors with no attestation history (rows of zeros in $\Cmat$) receive reputation solely from the teleport term; their rank is at least $\rzer$ from $\pvec$.
 
 \begin{algorithm*}[t]
 \caption{ComputeAttestorReputation}
@@ -273,7 +284,7 @@ Let $\Aset$ be PASS attestors for a task, and $R_A$ their reputations.
 \begin{equation}
 \textsf{accepted} \iff \left(\sum_{A\in \Aset} R_A \ge \tauT\right)\land \left(|\Aset|\ge 1\right).
 \end{equation}
-$\Aset$ is the set of \emph{verifier} attestors that returned \Pass for the task (invoker attestation is asynchronous and does not affect immediate acceptance). Unknown attestors receive baseline rank 0.2. Default $\tauT=0.5$, $\alphaD=0.85$.
+$\Aset$ is the set of \emph{verifier} attestors that returned \Pass for the task (invoker attestation is asynchronous and does not affect immediate acceptance). Attestors not yet in the attestation graph receive $R_A = \rzer$ from the seed vector $\pvec$ (Section~\ref{sec:seed}). Default $\tauT=0.5$, $\alphaD=0.85$.
 \end{definition}
 
 \section{Security and Adversarial Considerations}
@@ -324,8 +335,10 @@ $A$ & Attestor \\
 $\Cmat$ & Attestor$\rightarrow$worker matrix \\
 $\Mmat$ & Attestor$\rightarrow$attestor flow matrix \\
 $\Rvec$ & Attestor reputation vector \\
-$\pvec$ & Seed distribution \\
+$\pvec$ & Seed distribution $(1-\betaD)\mathbf{u}+\betaD\mathbf{s}$ \\
+$\rzer$ & Baseline rank (from uniform component of $\pvec$) \\
 $\alphaD$ & Damping \\
+$\betaD$ & Seed mixing (uniform vs seeded) \\
 $\tauT$ & Acceptance threshold \\
 \bottomrule
 \end{tabular}
